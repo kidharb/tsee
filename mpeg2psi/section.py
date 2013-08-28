@@ -34,7 +34,7 @@ def get_table_id(data):
 	"""
 	return data[0]
 
-def section_syntax_flag(data):
+def get_section_syntax_indicator(data):
 	"""Get the section syntax indicator from the given section data
 	
 	Parses the given array of section data bytes and returns the section syntax indicator. If True, then this
@@ -43,7 +43,7 @@ def section_syntax_flag(data):
 	if data[1] & int('10000000', 2): return True
 	return False
 
-def private_flag(data):
+def get_private_indicator(data):
 	"""Gets the private section indicator from the given section data
 	
 	Parses the given array of section data bytes and returns the private section indicator. If True, then this
@@ -79,7 +79,7 @@ def get_version_number(data):
 	vn = vn >> 1
 	return vn
 
-def current_next_flag(data):
+def get_current_next_indicator(data):
 	"""Gets the current/next indicator from the given section data
 	
 	Parses the given array of section data bytes and returns the current/next indicator. If True, then this
@@ -113,7 +113,7 @@ def get_data(data):
 	offset = 3
 	sl = get_section_length(data)
 	data_len = sl
-	if section_syntax_flag(data): 
+	if get_section_syntax_indicator(data): 
 		offset += 5
 		data_len -= 5
 	return list(data[offset:offset+data_len])
@@ -151,8 +151,8 @@ class Section(object):
 		"""
 		if self.header: return 3
 		self.table_id                 = get_table_id(data)
-		self.section_syntax_indicator = section_syntax_flag(data)
-		self.private_indicator        = private_flag(data)
+		self.section_syntax_indicator = get_section_syntax_indicator(data)
+		self.private_indicator        = get_private_indicator(data)
 		self.section_length           = get_section_length(data)
 		self.length                   = self.section_length + 3
 		self.header                   = True
@@ -172,7 +172,7 @@ class Section(object):
 		if self.extended_header: return 5
 		self.table_id_extension     = get_table_id_extension(data)
 		self.version                = get_version_number(data)
-		self.current_next_indicator = current_next_flag(data)
+		self.current_next_indicator = get_current_next_indicator(data)
 		self.section_number         = get_section_number(data)
 		self.last_section_number    = get_last_section_number(data)
 		self.extended_header        = True
@@ -307,8 +307,53 @@ if __name__ == '__main__':
 	import unittest
 	import _known_tables
 
+	class DataParsing(unittest.TestCase):
+		def test(self):
+			self.assertEqual(get_table_id([0x22,0xFF]),            0x22, 'failed to get the table ID');
+			self.assertEqual(get_table_id([0x64,0xFF]),            0x64, 'failed to get the table ID');
+			self.assertEqual(get_table_id([0x00,0xFF]),            0x00, 'failed to get the table ID');
+			
+			self.assertTrue(get_section_syntax_indicator([0xFF, int('10000000', 2), 0xFF]), 'failed to getting the section syntax indicator');
+			self.assertFalse(get_section_syntax_indicator([0xFF, int('01111111', 2), 0xFF]), 'failed to getting the section syntax indicator');
+			
+			self.assertTrue(get_private_indicator([0xFF,  int('01000000', 2), 0xFF]), 'failed to getting the private indicator');
+			self.assertFalse(get_private_indicator([0xFF, int('10111111', 2), 0xFF]), 'failed to getting the private indicator');
+			
+			self.assertEqual(get_section_length( [0xFF, int('11111111', 2), int('10101010', 2), 0xFF]),      int('111110101010', 2), 'failed to get the section length');
+			self.assertEqual(get_section_length([0x00, int('00001111', 2), int('10101010', 2), 0x00]),      int('111110101010', 2), 'failed to get the section length');
+
+			self.assertEqual(get_table_id_extension([0x22, 0xFF, 0xff, 0x00, 0x00, 0xff]),  0x00, 'failed to get the table id extension');
+			self.assertEqual(get_table_id_extension([0x22, 0xFF, 0xff, 0x12, 0x34, 0xff]),  0x1234, 'failed to get the table id extension');
+
+
+			self.assertEqual(get_version_number([0x22, 0xFF, 0xff, 0x00, 0x00, int('00111110',2), 0x00]),      int('11111',2), 'failed to get the version number');
+			self.assertEqual(get_version_number([0x22, 0xFF, 0xff, 0x00, 0xFF, int('11000001',2), 0xff]),      int('00000',2), 'failed to get the version number');
+			
+			self.assertTrue(get_current_next_indicator ([0x22, 0xFF, 0xff, 0x00, 0x00, int('00000001',2), 0x00]), 'failed to get the current next flag');
+			self.assertFalse(get_current_next_indicator([0x22, 0xFF, 0xff, 0x00, 0x00, int('11111110',2), 0xff]), 'failed to get the current next flag');
+			
+			self.assertEqual(get_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x12]),      0x12, 'failed to get the section number');
+			self.assertEqual(get_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x34]),      0x34, 'failed to get the section number');
+			
+			self.assertEqual(get_last_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x00, 0x12]),      0x12, 'failed to get the last section number');
+			self.assertEqual(get_last_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x00, 0x34]),      0x34, 'failed to get the last section number');
+			
+			self.assertEqual(get_data([0xFF, int('10000000', 2), 10, 0x00, 0x00, 0x00, 0x00, 0x34, 0x12, 0x34, 0x56, 0x78, 0x90]), [0x12, 0x34, 0x56, 0x78, 0x90], 'failed to get the table data');
+			self.assertEqual(get_data([0xFF, int('01111111', 2), 5, 0x12, 0x34, 0x56, 0x78, 0x90]), [0x12, 0x34, 0x56, 0x78, 0x90], 'failed to get the table data');			
+
+		def setUp(self):
+			print('In setUp()')
+			
+		def tearDown(self):
+			print('In tearDown()')
+
+
+
 	nit_data_0 = _known_tables.get_sample_nit_data()[0]
 	nit_data_1 = _known_tables.get_sample_nit_data()[1]
+	cat_data   = _known_tables.get_sample_cat_data()[0]
+	pat_data   = _known_tables.get_sample_pat_data()[0]
+	pmt_data   = _known_tables.get_sample_pmt_data()[0]
 	
 	def testNitSection0(test_case, section):
 		test_case.assertEqual(64, section.table_id, 'incorrect table id')
@@ -334,9 +379,48 @@ if __name__ == '__main__':
 		test_case.assertEqual(section.section_length, len(section.table_body), 'table body has incorrect length')
 		test_case.assertEqual(0xCF1BECB1, section.crc, 'bad crc')
 		
+	def testCatSection(test_case, section):
+		test_case.assertEqual(1, section.table_id, 'incorrect table id')
+		test_case.assertTrue(section.section_syntax_indicator, 'incorrect section syntax indicator')
+		test_case.assertFalse(section.private_indicator, 'incorrect private section indicator')
+		test_case.assertEqual(15, section.section_length, 'incorrect section length')
+		test_case.assertEqual(0, section.version, 'incorrect version')
+		test_case.assertTrue(section.current_next_indicator, 'incorrect current next indicator')
+		test_case.assertEqual(0, section.section_number, 'incorrect section number')
+		test_case.assertEqual(0, section.last_section_number, 'incorrect last section number')
+		test_case.assertEqual(section.section_length, len(section.table_body), 'table body has incorrect length')
+		test_case.assertEqual(0x9064C6D0, section.crc, 'bad crc')
+		
+	def testPatSection(test_case, section):
+		test_case.assertEqual(0, section.table_id, 'incorrect table id')
+		test_case.assertTrue(section.section_syntax_indicator, 'incorrect section syntax indicator')
+		test_case.assertFalse(section.private_indicator, 'incorrect private section indicator')
+		test_case.assertEqual(0x61, section.section_length, 'incorrect section length')
+		test_case.assertEqual(16, section.version, 'incorrect version')
+		test_case.assertTrue(section.current_next_indicator, 'incorrect current next indicator')
+		test_case.assertEqual(0, section.section_number, 'incorrect section number')
+		test_case.assertEqual(0, section.last_section_number, 'incorrect last section number')
+		test_case.assertEqual(section.section_length, len(section.table_body), 'table body has incorrect length')
+		test_case.assertEqual(0xAAFE7CBF, section.crc, 'bad crc')
+		
+	def testPmtSection(test_case, section):
+		test_case.assertEqual(2, section.table_id, 'incorrect table id')
+		test_case.assertTrue(section.section_syntax_indicator, 'incorrect section syntax indicator')
+		test_case.assertFalse(section.private_indicator, 'incorrect private section indicator')
+		test_case.assertEqual(0x48, section.section_length, 'incorrect section length')
+		test_case.assertEqual(1, section.version, 'incorrect version')
+		test_case.assertTrue(section.current_next_indicator, 'incorrect current next indicator')
+		test_case.assertEqual(0, section.section_number, 'incorrect section number')
+		test_case.assertEqual(0, section.last_section_number, 'incorrect last section number')
+		test_case.assertEqual(section.section_length, len(section.table_body), 'table body has incorrect length')
+		test_case.assertEqual(0x11F62C03, section.crc, 'bad crc')
+		
 	class KnownSections(unittest.TestCase):
 		known_sections = {testNitSection0:nit_data_0,
-						  testNitSection1:nit_data_1}
+						  testNitSection1:nit_data_1,
+						  testPatSection:pat_data,
+						  testPmtSection:pmt_data,
+						  testCatSection:cat_data}
 		
 		def testKnownSections(self):
 			for function in self.known_sections:
