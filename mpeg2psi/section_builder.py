@@ -1,3 +1,8 @@
+"""section builder
+
+	Provides a set of functions to build a basic MPEG2-TS PSI section.
+"""
+
 def create_section_data_block(data_length):
 	"""Create a block of data to represend a section
 	

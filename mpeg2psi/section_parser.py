@@ -1,7 +1,7 @@
-"""section module
+"""section parser
 
-	Provides a set of functions to parse and encapsulate information about a
-	basic MPEG2-TS PSI section.
+	Provides a set of functions to parse information about a basic
+	MPEG2-TS PSI section.
 """
 
 def get_pointer_field(data):
@@ -112,9 +112,9 @@ if __name__ == '__main__':
 
 	class DataParsing(unittest.TestCase):
 		def test(self):
-			self.assertEqual(get_table_id([0x22,0xFF]),            0x22, 'failed to get the table ID')
-			self.assertEqual(get_table_id([0x64,0xFF]),            0x64, 'failed to get the table ID')
-			self.assertEqual(get_table_id([0x00,0xFF]),            0x00, 'failed to get the table ID')
+			self.assertEqual(get_table_id([0x22,0xFF]),	0x22, 'failed to get the table ID')
+			self.assertEqual(get_table_id([0x64,0xFF]),	0x64, 'failed to get the table ID')
+			self.assertEqual(get_table_id([0x00,0xFF]), 0x00, 'failed to get the table ID')
 			
 			self.assertTrue(get_section_syntax_indicator([0xFF, int('10000000', 2), 0xFF]), 'failed to getting the section syntax indicator')
 			self.assertFalse(get_section_syntax_indicator([0xFF, int('01111111', 2), 0xFF]), 'failed to getting the section syntax indicator')
@@ -122,24 +122,24 @@ if __name__ == '__main__':
 			self.assertTrue(get_private_indicator([0xFF,  int('01000000', 2), 0xFF]), 'failed to getting the private indicator')
 			self.assertFalse(get_private_indicator([0xFF, int('10111111', 2), 0xFF]), 'failed to getting the private indicator')
 			
-			self.assertEqual(get_section_length( [0xFF, int('11111111', 2), int('10101010', 2), 0xFF]),      int('111110101010', 2), 'failed to get the section length')
-			self.assertEqual(get_section_length([0x00, int('00001111', 2), int('10101010', 2), 0x00]),      int('111110101010', 2), 'failed to get the section length')
+			self.assertEqual(get_section_length( [0xFF, int('11111111', 2), int('10101010', 2), 0xFF]), int('111110101010', 2), 'failed to get the section length')
+			self.assertEqual(get_section_length([0x00, int('00001111', 2), int('10101010', 2), 0x00]), int('111110101010', 2), 'failed to get the section length')
 
-			self.assertEqual(get_table_id_extension([0x22, 0xFF, 0xff, 0x00, 0x00, 0xff]),  0x00, 'failed to get the table id extension')
-			self.assertEqual(get_table_id_extension([0x22, 0xFF, 0xff, 0x12, 0x34, 0xff]),  0x1234, 'failed to get the table id extension')
+			self.assertEqual(get_table_id_extension([0x22, 0xFF, 0xff, 0x00, 0x00, 0xff]), 0x00, 'failed to get the table id extension')
+			self.assertEqual(get_table_id_extension([0x22, 0xFF, 0xff, 0x12, 0x34, 0xff]), 0x1234, 'failed to get the table id extension')
 
 
-			self.assertEqual(get_version_number([0x22, 0xFF, 0xff, 0x00, 0x00, int('00111110',2), 0x00]),      int('11111',2), 'failed to get the version number')
-			self.assertEqual(get_version_number([0x22, 0xFF, 0xff, 0x00, 0xFF, int('11000001',2), 0xff]),      int('00000',2), 'failed to get the version number')
+			self.assertEqual(get_version_number([0x22, 0xFF, 0xff, 0x00, 0x00, int('00111110',2), 0x00]), int('11111',2), 'failed to get the version number')
+			self.assertEqual(get_version_number([0x22, 0xFF, 0xff, 0x00, 0xFF, int('11000001',2), 0xff]), int('00000',2), 'failed to get the version number')
 			
 			self.assertTrue(get_current_next_indicator ([0x22, 0xFF, 0xff, 0x00, 0x00, int('00000001',2), 0x00]), 'failed to get the current next flag')
 			self.assertFalse(get_current_next_indicator([0x22, 0xFF, 0xff, 0x00, 0x00, int('11111110',2), 0xff]), 'failed to get the current next flag')
 			
-			self.assertEqual(get_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x12]),      0x12, 'failed to get the section number')
-			self.assertEqual(get_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x34]),      0x34, 'failed to get the section number')
+			self.assertEqual(get_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x12]), 0x12, 'failed to get the section number')
+			self.assertEqual(get_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x34]), 0x34, 'failed to get the section number')
 			
-			self.assertEqual(get_last_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x00, 0x12]),      0x12, 'failed to get the last section number')
-			self.assertEqual(get_last_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x00, 0x34]),      0x34, 'failed to get the last section number')
+			self.assertEqual(get_last_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x00, 0x12]), 0x12, 'failed to get the last section number')
+			self.assertEqual(get_last_section_number([0x22, 0xFF, 0xff, 0x00, 0x00, 0x00, 0x00, 0x34]), 0x34, 'failed to get the last section number')
 			
 			self.assertEqual(get_data([0xFF, int('10000000', 2), 10, 0x00, 0x00, 0x00, 0x00, 0x34, 0x12, 0x34, 0x56, 0x78, 0x90]), [0x12, 0x34, 0x56, 0x78, 0x90], 'failed to get the table data')
 			self.assertEqual(get_data([0xFF, int('01111111', 2), 5, 0x12, 0x34, 0x56, 0x78, 0x90]), [0x12, 0x34, 0x56, 0x78, 0x90], 'failed to get the table data')
