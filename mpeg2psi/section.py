@@ -126,7 +126,7 @@ class Section(object):
 			self.complete = True
 			self._get_crc(self.table_body)
 			if _DEV: _save_section_to_file(self)
-			del (self.data_cache)
+			#del (self.data_cache)
 			
 	def add_data(self, data):
 		"""Add section data to the object to be processed
@@ -137,33 +137,33 @@ class Section(object):
 		Arguments:
 			data -- Array of data bytes that describe all or part of the section. Can be progressively added.
 		Return:
-			Returns the number of bytes still required to complete the section
+			Returns the number of bytes added
 		"""
-		if self.complete: return
+		if self.complete: return 0
 		if not self.data_cache:
 			self.parse(data)
-			return self.length ##could be wrong
-		
+			return len(self.data_cache)
+			
 		data = list(data)
 		datalen = len(data)
-		extra_len = 0
+		consumed_len = 0
 		
-		if not self.header: # strange case where not all of the header is yet available
+		if not self.header:
 			current_data_len = len(self.data_cache)
 			missing_header_len = 3 - current_data_len
+			if datalen < missing_header_len:
+				self.data_cache.extend(data)
+				return datalen
 			self.data_cache.extend(data[0:missing_header_len])
-			data = data[missing_header_len:]
-			extra_len = missing_header_len
+			consumed_len += missing_header_len
 			self.parse()
-			# now the header should be complete so we can calculate how much more data to add 
-				
+		
 		missing_data_len = (self.section_length + 3) - len(self.data_cache)
-		self.data_cache.extend(data[0:missing_data_len])
+		self.data_cache.extend(data[consumed_len:missing_data_len])
+		consumed_len += missing_data_len
+		self.parse()
 		
-		if len(self.data_cache) == (self.section_length + 3):
-			self.parse()
-		
-		return min (datalen, missing_data_len + extra_len) ##could be wrong
+		return consumed_len
 		
 	def _get_crc(self, data):
 		"""Saves the section CRC
@@ -289,5 +289,36 @@ if __name__ == '__main__':
 				data = self.known_sections[function]
 				section = Section(data)
 				function(self, section)							
+	
+	
+	def test_nit_0(test_case, section):
+		test_case.assertEqual(64, section.table_id, 'incorrect table id')
+		test_case.assertEqual(True, section.section_syntax_indicator, 'incorrect section syntax indicator')
+		test_case.assertEqual(True, section.private_indicator, 'incorrect private section indicator')
+		test_case.assertEqual(1014, section.section_length, 'incorrect section length')
+		test_case.assertEqual(6144, section.table_id_extension, 'incorrect table id extension')
+		test_case.assertEqual(1, section.version, 'incorrect version')
+		test_case.assertEqual(0, section.section_number, 'incorrect section number')
+		test_case.assertEqual(1, section.last_section_number, 'incorrect last section number')
+		test_case.assertEqual(section.section_length, len(section.table_body), 'table body has incorrect length')
+		test_case.assertEqual(0xD9787E8A, section.crc, 'bad crc')
+	
+	class PartialData(unittest.TestCase):
+		nit_data_0 = _known_tables.get_sample_nit_data()[0]
+		
+		def setUp(self):
+			self.section = Section()
+	
+		def testPartialData1(self):
+			for i in range(0,len(nit_data_0)):
+				#print list([nit_data_0[i]])
+				self.section.add_data(list([nit_data_0[i]]));
+			test_nit_0(self, self.section)
+		
+		def testPartialData2(self):
+			for i in range(0,len(nit_data_0), 2):
+				self.section.add_data(list([nit_data_0[i:i+2]]));
+			test_nit_0(self, self.section)
+		
 				
 	unittest.main()
