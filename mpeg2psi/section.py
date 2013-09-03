@@ -317,7 +317,17 @@ if __name__ == '__main__':
 		
 		def testPartialData2(self):
 			for i in range(0,len(nit_data_0), 2):
-				self.section.add_data(list([nit_data_0[i:i+2]]));
+				self.section.add_data(list(nit_data_0[i:i+2]));
+			test_nit_0(self, self.section)
+		
+		def testPartialData3(self):
+			for i in range(0,len(nit_data_0), 3):
+				self.section.add_data(list(nit_data_0[i:i+3]));
+			test_nit_0(self, self.section)
+		
+		def testPartialData4(self):
+			for i in range(0,len(nit_data_0), 4):
+				self.section.add_data(list(nit_data_0[i:i+4]));
 			test_nit_0(self, self.section)
 		
 				
