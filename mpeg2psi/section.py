@@ -4,7 +4,8 @@
 	MPEG2-TS PSI section.
 """
 
-import section_parser as stools
+import section_parser as sparse
+import section_builder as sbuild
 
 _DEV   = False
 _DEBUG = False
@@ -54,10 +55,10 @@ class Section(object):
 			The byte offset at which the header ends and the rest of the section data continues
 		"""
 		if self.header: return 3
-		self.table_id                 = stools.get_table_id(data)
-		self.section_syntax_indicator = stools.get_section_syntax_indicator(data)
-		self.private_indicator        = stools.get_private_indicator(data)
-		self.section_length           = stools.get_section_length(data)
+		self.table_id                 = sparse.get_table_id(data)
+		self.section_syntax_indicator = sparse.get_section_syntax_indicator(data)
+		self.private_indicator        = sparse.get_private_indicator(data)
+		self.section_length           = sparse.get_section_length(data)
 		self.length                   = self.section_length + 3
 		self.header                   = True
 		return 3
@@ -74,11 +75,11 @@ class Section(object):
 			The byte offset at which the extended header ends and the rest of the section data continues
 		"""
 		if self.extended_header: return 5
-		self.table_id_extension     = stools.get_table_id_extension(data)
-		self.version                = stools.get_version_number(data)
-		self.current_next_indicator = stools.get_current_next_indicator(data)
-		self.section_number         = stools.get_section_number(data)
-		self.last_section_number    = stools.get_last_section_number(data)
+		self.table_id_extension     = sparse.get_table_id_extension(data)
+		self.version                = sparse.get_version_number(data)
+		self.current_next_indicator = sparse.get_current_next_indicator(data)
+		self.section_number         = sparse.get_section_number(data)
+		self.last_section_number    = sparse.get_last_section_number(data)
 		self.extended_header        = True
 		return 5
 	
@@ -128,6 +129,33 @@ class Section(object):
 			if _DEV: _save_section_to_file(self)
 			#del (self.data_cache)
 			
+	def build(self):
+		"""Takes the section object and builds a data section from it
+		
+		Will allocate a new array of bytes and then build a transport stream section from the information in this object
+		Return:
+		    Returns the array of bytes containing the section
+		"""
+		if not self.complete: return None
+		data=sbuild.create_section_data_block(self.section_length+3)
+		sbuild.set_table_id(data, self.table_id)
+		sbuild.set_section_syntax_indicator(data, self.section_syntax_indicator)
+		sbuild.set_private_indicator(data, self.private_indicator)
+		sbuild.set_section_length(data, self.section_length)
+		offset=3
+		if self.section_syntax_indicator:
+		    sbuild.set_table_id_extension(data, self.table_id_extension)
+		    sbuild.set_version_number(data, self.version_number)
+		    sbuild.set_current_next_indicator(data, self.current_next_indicator)
+		    sbuild.set_section_number(data, self.section_number)
+		    sbuild.set_last_section_number(data, self.last_section_number)
+		    offset=8
+		sbuild.set_data(data, self.table_body, offset)
+		if self.section_syntax_indicator:
+			sbuild.append_crc(data)
+			self.crc=sbuild.calculate_crc(data[0:-4])
+		return data
+	
 	def add_data(self, data):
 		"""Add section data to the object to be processed
 		
@@ -330,5 +358,31 @@ if __name__ == '__main__':
 				self.section.add_data(list(nit_data_0[i:i+4]));
 			test_nit_0(self, self.section)
 		
+	
+	class SectionBuilder(unittest.TestCase):
+		
+		def setUp(self):
+			self.section = Section()
+		
+		def tearDown(self):
+		    del(self.section)
+		    
+		def testBuildCat(self):
+		    section = self.section
+		    section.table_id=1
+		    section.section_syntax_indicator=True
+		    section.private_indicator=False
+		    section.section_length=15
+		    section.version=0
+		    section.current_next_indicator=True
+		    section.table_id_extension=0xffff
+		    section.version_number=0
+		    section.section_number=0
+		    section.last_section_number=0
+		    section.crc=0x9064C6D0
+		    section.table_body=[0x09, 0x04, 0x06, 0x06, 0x05, 0x00, 0x90, 0x64, 0xC6, 0xD0]
+		    section.complete=True
+		    data=section.build()
+		    self.assertEqual(cat_data, data)
 				
 	unittest.main()
