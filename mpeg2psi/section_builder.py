@@ -210,7 +210,7 @@ def set_data(data, payload, offset):
 def calculate_crc(data):
 	"""Calculate the CRC from a block of section data
 	
-	Given a block of section data, calculates the CRC and returns it
+	Given a block of section data, calculates and returns the CRC
 	Arguments:
 		data -- List of bytes. Data to manipulate
 	Return:
